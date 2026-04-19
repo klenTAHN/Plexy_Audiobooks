@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class AuthorsViewModel(
     private val libraryRepository: LibraryRepository,
@@ -29,6 +30,13 @@ class AuthorsViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    fun signOut(onSignedOut: () -> Unit) {
+        viewModelScope.launch {
+            settingsManager.clear()
+            onSignedOut()
+        }
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

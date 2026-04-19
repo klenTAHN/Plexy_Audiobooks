@@ -20,7 +20,9 @@ interface PlexApi {
     suspend fun createPin(
         @Query("strong") strong: Boolean = false,
         @Header("X-Plex-Product") product: String,
-        @Header("X-Plex-Client-Identifier") clientIdentifier: String
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<PlexPinResponse>
 
     @GET("https://plex.tv/api/v2/pins/{id}")
@@ -28,14 +30,20 @@ interface PlexApi {
     suspend fun checkPin(
         @Path("id") id: Long,
         @Query("code") code: String,
-        @Header("X-Plex-Client-Identifier") clientIdentifier: String
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<PlexPinResponse>
 
     @GET("https://plex.tv/api/v2/user")
     @Headers("Accept: application/json")
     suspend fun getUser(
         @Header("X-Plex-Token") token: String,
-        @Header("X-Plex-Client-Identifier") clientIdentifier: String
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<PlexUserResponse>
 
     @GET("https://plex.tv/api/v2/resources")
@@ -43,28 +51,43 @@ interface PlexApi {
     suspend fun getResources(
         @Query("includeHttps") includeHttps: Int = 1,
         @Header("X-Plex-Token") token: String,
-        @Header("X-Plex-Client-Identifier") clientIdentifier: String
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<List<PlexDevice>>
 
     @GET
     @Headers("Accept: application/json")
     suspend fun getLibraries(
         @Url url: String,
-        @Header("X-Plex-Token") token: String
+        @Header("X-Plex-Token") token: String,
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<PlexLibraryResponse>
     
     @GET
     @Headers("Accept: application/json")
     suspend fun getLibrarySections(
         @Url url: String,
-        @Header("X-Plex-Token") token: String
+        @Header("X-Plex-Token") token: String,
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<PlexLibraryResponse>
 
     @GET
     @Headers("Accept: application/json")
     suspend fun getLibrarySection(
         @Url url: String,
-        @Header("X-Plex-Token") token: String
+        @Header("X-Plex-Token") token: String,
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<PlexLibraryResponse>
 
     @GET
@@ -72,6 +95,10 @@ interface PlexApi {
     suspend fun getLibraryContents(
         @Url url: String,
         @Header("X-Plex-Token") token: String,
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String,
         @Query("type") type: Int? = 9,
         @Query("X-Plex-Container-Start") start: Int? = null,
         @Query("X-Plex-Container-Size") size: Int? = null
@@ -81,7 +108,11 @@ interface PlexApi {
     @Headers("Accept: application/json")
     suspend fun getMetadata(
         @Url url: String,
-        @Header("X-Plex-Token") token: String
+        @Header("X-Plex-Token") token: String,
+        @Header("X-Plex-Client-Identifier") clientIdentifier: String,
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<PlexLibraryResponse>
 
     @GET
@@ -95,7 +126,9 @@ interface PlexApi {
         @Query("duration") duration: Long,
         @Header("X-Plex-Token") token: String,
         @Header("X-Plex-Client-Identifier") clientIdentifier: String,
-        @Header("X-Plex-Product") product: String
+        @Header("X-Plex-Product") product: String,
+        @Header("X-Plex-Device") device: String,
+        @Header("X-Plex-Platform") platform: String
     ): Response<Unit>
 
     @GET

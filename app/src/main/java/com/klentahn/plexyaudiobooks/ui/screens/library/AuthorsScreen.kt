@@ -26,6 +26,9 @@ import com.klentahn.plexyaudiobooks.ui.components.CommonTopBar
 fun AuthorsScreen(
     onAuthorClick: (String) -> Unit,
     onNavigateToBooks: () -> Unit,
+    onChangeServer: () -> Unit,
+    onChangeLibrary: () -> Unit,
+    onSignOut: () -> Unit,
     viewModel: AuthorsViewModel = viewModel(factory = AuthorsViewModel.Factory)
 ) {
     val authors by viewModel.authors.collectAsState()
@@ -37,7 +40,10 @@ fun AuthorsScreen(
                 subtitle = "Authors",
                 showMenu = true,
                 onNavigateToBooks = onNavigateToBooks,
-                onNavigateToAuthors = {} // Already here
+                onNavigateToAuthors = {}, // Already here
+                onChangeServer = onChangeServer,
+                onChangeLibrary = onChangeLibrary,
+                onSignOut = { viewModel.signOut(onSignOut) }
             )
         },
         containerColor = Color.Black

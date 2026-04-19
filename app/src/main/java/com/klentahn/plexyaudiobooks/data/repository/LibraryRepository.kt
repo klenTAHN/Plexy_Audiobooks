@@ -8,6 +8,7 @@ import com.klentahn.plexyaudiobooks.data.remote.PlexApi
 import com.klentahn.plexyaudiobooks.data.MetadataMaster
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import java.util.UUID
 
 class LibraryRepository(
     private val plexApi: PlexApi,
@@ -16,11 +17,26 @@ class LibraryRepository(
     private val metadataMaster: MetadataMaster
 ) {
     private val TAG = "LibraryRepository"
+    private val productName = "Plexy Audiobooks"
+    private val deviceName = android.os.Build.MODEL
+    private val platformName = "Android"
+
+    private suspend fun getClientIdentifier(): String {
+        val currentId = settingsManager.clientIdentifier.first()
+        return if (currentId != null) {
+            currentId
+        } else {
+            val newId = UUID.randomUUID().toString()
+            settingsManager.saveClientIdentifier(newId)
+            newId
+        }
+    }
 
     private suspend fun resolveThumbRecursive(
         metadata: com.klentahn.plexyaudiobooks.data.model.PlexMetadata,
         serverUri: String,
         token: String,
+        clientIdentifier: String,
         depth: Int = 0
     ): String? {
         if (depth > 3) return null
@@ -50,11 +66,18 @@ class LibraryRepository(
         if (metadata.parentRatingKey != null) {
             try {
                 val url = "$serverUri/library/metadata/${metadata.parentRatingKey}?includeExternalMedia=1&includeExtras=1"
-                val response = plexApi.getMetadata(url, token)
+                val response = plexApi.getMetadata(
+                    url = url,
+                    token = token,
+                    clientIdentifier = clientIdentifier,
+                    product = productName,
+                    device = deviceName,
+                    platform = platformName
+                )
                 if (response.isSuccessful) {
                     val parentMetadata = response.body()?.mediaContainer?.metadata?.firstOrNull()
                     if (parentMetadata != null) {
-                        return resolveThumbRecursive(parentMetadata, serverUri, token, depth + 1)
+                        return resolveThumbRecursive(parentMetadata, serverUri, token, clientIdentifier, depth + 1)
                     }
                 }
             } catch (e: Exception) {
@@ -81,6 +104,7 @@ class LibraryRepository(
         val token = settingsManager.authToken.first() ?: return
         val serverUri = settingsManager.serverUri.first() ?: return
         val libraryKey = settingsManager.libraryKey.first() ?: return
+        val clientIdentifier = getClientIdentifier()
 
         var offset = 0
         val pageSize = 100
@@ -98,6 +122,10 @@ class LibraryRepository(
                 val response = plexApi.getLibraryContents(
                     url = url,
                     token = token,
+                    clientIdentifier = clientIdentifier,
+                    product = productName,
+                    device = deviceName,
+                    platform = platformName,
                     type = 9, // Fetch albums (books)
                     start = offset,
                     size = pageSize
@@ -139,7 +167,7 @@ class LibraryRepository(
                     it.type == "album" || it.type == "track" || it.type == "audio"
                 }.map { metadata ->
                     val existingBook = localBooks[metadata.ratingKey]
-                    val resolvedThumb = resolveThumbRecursive(metadata, serverUri, token) ?: existingBook?.thumb
+                    val resolvedThumb = resolveThumbRecursive(metadata, serverUri, token, clientIdentifier) ?: existingBook?.thumb
                     
                     val mediaPart = metadata.media?.firstOrNull()?.parts?.firstOrNull()
                     val streamUrl = mediaPart?.let { "$serverUri${it.key}?X-Plex-Token=$token" }
@@ -200,6 +228,7 @@ class LibraryRepository(
         val token = settingsManager.authToken.first() ?: return
         val serverUri = settingsManager.serverUri.first() ?: return
         val libraryKey = settingsManager.libraryKey.first() ?: return
+        val clientIdentifier = getClientIdentifier()
 
         try {
             val localBooks = bookDao.getBooksList(libraryKey)
@@ -207,12 +236,19 @@ class LibraryRepository(
 
             localBooks.forEach { book ->
                 val url = "$serverUri/library/metadata/${book.ratingKey}?includeExternalMedia=1&includeExtras=1"
-                val response = plexApi.getMetadata(url, token)
+                val response = plexApi.getMetadata(
+                    url = url,
+                    token = token,
+                    clientIdentifier = clientIdentifier,
+                    product = productName,
+                    device = deviceName,
+                    platform = platformName
+                )
 
                 if (response.isSuccessful) {
                     val metadata = response.body()?.mediaContainer?.metadata?.firstOrNull()
                     if (metadata != null) {
-                        val resolvedThumb = resolveThumbRecursive(metadata, serverUri, token)
+                        val resolvedThumb = resolveThumbRecursive(metadata, serverUri, token, clientIdentifier)
                         
                         val mediaPart = metadata.media?.firstOrNull()?.parts?.firstOrNull()
                         val streamUrl = mediaPart?.let { "$serverUri${it.key}?X-Plex-Token=$token" }

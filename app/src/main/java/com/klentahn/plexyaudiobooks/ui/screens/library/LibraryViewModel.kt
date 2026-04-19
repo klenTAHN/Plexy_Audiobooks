@@ -109,6 +109,13 @@ class LibraryViewModel(
         }
     }
 
+    fun signOut(onSignedOut: () -> Unit) {
+        viewModelScope.launch {
+            settingsManager.clear()
+            onSignedOut()
+        }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

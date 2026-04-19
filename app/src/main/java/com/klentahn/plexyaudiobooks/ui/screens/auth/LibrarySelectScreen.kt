@@ -46,10 +46,9 @@ fun LibrarySelectScreen(
                 onLibrarySelected() 
             },
             title = { Text("Warning") },
-            text = { Text("The 'Store track progress' setting is not enabled for this library. Audiobook progress may not be saved correctly across devices.") },
+            text = { Text("If the 'Store track progress' setting is not enabled for this library, audiobook progress will not be saved correctly.") },
             confirmButton = {
                 TextButton(onClick = { 
-                    showWarning = false
                     onLibrarySelected()
                 }) {
                     Text("OK")
@@ -86,6 +85,7 @@ fun LibrarySelectScreen(
                                             if (isTrackProgressEnabled) {
                                                 onLibrarySelected()
                                             } else {
+                                                android.util.Log.w("LibrarySelect", "Warning: 'Store track progress' is NOT enabled for library '${library.title}'")
                                                 showWarning = true
                                             }
                                         }

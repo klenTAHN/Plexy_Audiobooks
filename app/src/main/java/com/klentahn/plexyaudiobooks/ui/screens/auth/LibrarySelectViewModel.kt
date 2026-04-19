@@ -54,10 +54,13 @@ class LibrarySelectViewModel(
         }
     }
 
-    fun selectLibrary(library: PlexLibrary, onSelected: (Boolean) -> Unit) {
+    fun selectLibrary(library: PlexLibrary, onResult: (isTrackProgressEnabled: Boolean) -> Unit) {
         viewModelScope.launch {
             val token = settingsManager.authToken.first()
             val serverUri = settingsManager.serverUri.first()
+            
+            // Log the initial state from the list view
+            android.util.Log.d("LibrarySelect", "Initial enableTrackOffsets for '${library.title}': ${library.enableTrackOffsets}")
             
             var isTrackProgressEnabled = library.enableTrackOffsets == 1
             
@@ -65,12 +68,13 @@ class LibrarySelectViewModel(
                 // Fetch full library details to get the 'Store track progress' (enableTrackOffsets) setting
                 val fullLibrary = plexRepository.getLibrary(serverUri, token, library.key)
                 if (fullLibrary != null) {
+                    android.util.Log.d("LibrarySelect", "Full enableTrackOffsets for '${fullLibrary.title}': ${fullLibrary.enableTrackOffsets}")
                     isTrackProgressEnabled = fullLibrary.enableTrackOffsets == 1
                 }
             }
             
             settingsManager.saveLibrary(library.key, library.title)
-            onSelected(isTrackProgressEnabled)
+            onResult(isTrackProgressEnabled)
         }
     }
 

@@ -99,6 +99,21 @@ fun PlexyAudiobooksApp(startDestination: String) {
                 onNavigateToAuthors = {
                     navController.navigate(Screen.Authors.route)
                 },
+                onChangeServer = {
+                    navController.navigate(Screen.ServerSelect.route) {
+                        popUpTo(Screen.MainLibrary.route) { inclusive = true }
+                    }
+                },
+                onChangeLibrary = {
+                    navController.navigate(Screen.LibrarySelect.route) {
+                        popUpTo(Screen.MainLibrary.route) { inclusive = true }
+                    }
+                },
+                onSignOut = {
+                    navController.navigate(Screen.PlexLink.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 serverUri = serverUri,
                 token = token
             )
@@ -111,6 +126,21 @@ fun PlexyAudiobooksApp(startDestination: String) {
                 onNavigateToBooks = {
                     navController.navigate(Screen.MainLibrary.route) {
                         popUpTo(Screen.MainLibrary.route) { inclusive = true }
+                    }
+                },
+                onChangeServer = {
+                    navController.navigate(Screen.ServerSelect.route) {
+                        popUpTo(Screen.MainLibrary.route) { inclusive = true }
+                    }
+                },
+                onChangeLibrary = {
+                    navController.navigate(Screen.LibrarySelect.route) {
+                        popUpTo(Screen.MainLibrary.route) { inclusive = true }
+                    }
+                },
+                onSignOut = {
+                    navController.navigate(Screen.PlexLink.route) {
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )

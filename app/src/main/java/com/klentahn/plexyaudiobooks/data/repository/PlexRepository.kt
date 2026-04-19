@@ -13,6 +13,8 @@ class PlexRepository(
     private val settingsManager: SettingsManager
 ) {
     private val productName = "Plexy Audiobooks"
+    private val deviceName = android.os.Build.MODEL
+    private val platformName = "Android"
 
     private suspend fun getClientIdentifier(): String {
         val currentId = settingsManager.clientIdentifier.first()
@@ -28,7 +30,9 @@ class PlexRepository(
     suspend fun createPin(): PlexPinResponse? {
         val response = plexApi.createPin(
             product = productName,
-            clientIdentifier = getClientIdentifier()
+            clientIdentifier = getClientIdentifier(),
+            device = deviceName,
+            platform = platformName
         )
         return if (response.isSuccessful) response.body() else null
     }
@@ -37,7 +41,10 @@ class PlexRepository(
         val response = plexApi.checkPin(
             id = id,
             code = code,
-            clientIdentifier = getClientIdentifier()
+            clientIdentifier = getClientIdentifier(),
+            product = productName,
+            device = deviceName,
+            platform = platformName
         )
         return if (response.isSuccessful) response.body() else null
     }
@@ -45,7 +52,10 @@ class PlexRepository(
     suspend fun getServers(token: String): List<PlexDevice>? {
         val response = plexApi.getResources(
             token = token,
-            clientIdentifier = getClientIdentifier()
+            clientIdentifier = getClientIdentifier(),
+            product = productName,
+            device = deviceName,
+            platform = platformName
         )
         return if (response.isSuccessful) {
             response.body()?.filter { it.provides.contains("server") }
@@ -53,24 +63,57 @@ class PlexRepository(
     }
 
     suspend fun getLibraries(serverUri: String, token: String): List<PlexLibrary>? {
-        val url = "$serverUri/library/sections"
-        val response = plexApi.getLibrarySections(url, token)
+        val url = "$serverUri/library/sections?includePrefs=1"
+        val response = plexApi.getLibrarySections(
+            url = url,
+            token = token,
+            clientIdentifier = getClientIdentifier(),
+            product = productName,
+            device = deviceName,
+            platform = platformName
+        )
         return if (response.isSuccessful) {
             response.body()?.mediaContainer?.directories
         } else null
     }
 
     suspend fun getLibrary(serverUri: String, token: String, libraryKey: String): PlexLibrary? {
-        val url = "$serverUri/library/sections/$libraryKey"
-        val response = plexApi.getLibrarySection(url, token)
+        val url = "$serverUri/library/sections/$libraryKey?includePrefs=1"
+        val response = plexApi.getLibrarySection(
+            url = url,
+            token = token,
+            clientIdentifier = getClientIdentifier(),
+            product = productName,
+            device = deviceName,
+            platform = platformName
+        )
         return if (response.isSuccessful) {
-            response.body()?.mediaContainer?.directories?.firstOrNull()
+            val mediaContainer = response.body()?.mediaContainer
+            var library = mediaContainer?.directories?.firstOrNull()
+            
+            if (library != null && library.enableTrackOffsets == null) {
+                // If not found in directory attributes, check the settings list
+                val trackOffsetsSetting = mediaContainer?.settings?.find { it.id == "enableTrackOffsets" }
+                if (trackOffsetsSetting != null) {
+                    val isEnabled = trackOffsetsSetting.value == "1" || 
+                                    trackOffsetsSetting.value.lowercase() == "true"
+                    library = library.copy(enableTrackOffsets = if (isEnabled) 1 else 0)
+                }
+            }
+            library
         } else null
     }
 
     suspend fun getMetadata(serverUri: String, token: String, ratingKey: String): com.klentahn.plexyaudiobooks.data.model.PlexMetadata? {
         val url = "$serverUri/library/metadata/$ratingKey?includeExternalMedia=1&includeExtras=1&includeChapters=1&includeMarkers=1"
-        val response = plexApi.getMetadata(url, token)
+        val response = plexApi.getMetadata(
+            url = url,
+            token = token,
+            clientIdentifier = getClientIdentifier(),
+            product = productName,
+            device = deviceName,
+            platform = platformName
+        )
         return if (response.isSuccessful) {
             response.body()?.mediaContainer?.metadata?.firstOrNull()
         } else null
@@ -78,7 +121,14 @@ class PlexRepository(
 
     suspend fun getChildren(serverUri: String, token: String, ratingKey: String): List<com.klentahn.plexyaudiobooks.data.model.PlexMetadata>? {
         val url = "$serverUri/library/metadata/$ratingKey/children"
-        val response = plexApi.getMetadata(url, token)
+        val response = plexApi.getMetadata(
+            url = url,
+            token = token,
+            clientIdentifier = getClientIdentifier(),
+            product = productName,
+            device = deviceName,
+            platform = platformName
+        )
         return if (response.isSuccessful) {
             response.body()?.mediaContainer?.metadata
         } else null
@@ -103,7 +153,9 @@ class PlexRepository(
             duration = duration,
             token = token,
             clientIdentifier = getClientIdentifier(),
-            product = productName
+            product = productName,
+            device = deviceName,
+            platform = platformName
         )
     }
 

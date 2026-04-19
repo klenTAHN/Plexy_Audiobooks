@@ -71,7 +71,21 @@ data class MediaContainer(
     val totalSize: Int? = null,
     val offset: Int? = null,
     @Json(name = "Directory") val directories: List<PlexLibrary>? = null,
-    @Json(name = "Metadata") val metadata: List<PlexMetadata>? = null
+    @Json(name = "Metadata") val metadata: List<PlexMetadata>? = null,
+    @Json(name = "Setting") val settings: List<PlexSetting>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class PlexSetting(
+    val id: String = "",
+    val label: String = "",
+    val type: String = "",
+    val default: String = "",
+    val value: String = "",
+    val hidden: Boolean = false,
+    val advanced: Boolean = false,
+    val group: String = "",
+    val enumValues: String? = null
 )
 
 @JsonClass(generateAdapter = true)

@@ -57,6 +57,9 @@ fun LibraryScreen(
     onBookClick: (String) -> Unit,
     onAuthorClick: (String) -> Unit,
     onNavigateToAuthors: () -> Unit,
+    onChangeServer: () -> Unit,
+    onChangeLibrary: () -> Unit,
+    onSignOut: () -> Unit,
     serverUri: String?,
     token: String?,
     viewModel: LibraryViewModel = viewModel(factory = LibraryViewModel.Factory)
@@ -84,7 +87,10 @@ fun LibraryScreen(
                 onViewTiles = { viewModel.setViewMode(LibraryViewMode.TILES) },
                 onViewList = { viewModel.setViewMode(LibraryViewMode.LIST) },
                 onNavigateToBooks = {}, // Already on books
-                onNavigateToAuthors = onNavigateToAuthors
+                onNavigateToAuthors = onNavigateToAuthors,
+                onChangeServer = onChangeServer,
+                onChangeLibrary = onChangeLibrary,
+                onSignOut = { viewModel.signOut(onSignOut) }
             )
         },
         containerColor = Color.Black

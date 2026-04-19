@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private enum class MenuState {
-    MAIN, VIEW, REFRESH
+    MAIN, VIEW, REFRESH, CONFIGURATION
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +58,9 @@ fun CommonTopBar(
     onViewList: () -> Unit = {},
     onNavigateToBooks: () -> Unit = {},
     onNavigateToAuthors: () -> Unit = {},
+    onChangeServer: () -> Unit = {},
+    onChangeLibrary: () -> Unit = {},
+    onSignOut: () -> Unit = {},
     showSearch: Boolean = false,
     searchQuery: String = "",
     onSearchQueryChange: (String) -> Unit = {},
@@ -187,6 +190,19 @@ fun CommonTopBar(
                                         trailingIcon = { Icon(Icons.Rounded.ChevronRight, null) },
                                         onClick = { menuState = MenuState.REFRESH }
                                     )
+                                    DropdownMenuItem(
+                                        text = { Text("Configuration") },
+                                        trailingIcon = { Icon(Icons.Rounded.ChevronRight, null) },
+                                        onClick = { menuState = MenuState.CONFIGURATION }
+                                    )
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        text = { Text("Sign Out") },
+                                        onClick = {
+                                            expanded = false
+                                            onSignOut()
+                                        }
+                                    )
                                 }
                                 if (showChapters) {
                                     if (showMenu) HorizontalDivider()
@@ -248,6 +264,28 @@ fun CommonTopBar(
                                     onClick = {
                                         expanded = false
                                         onRefreshMetadata()
+                                    }
+                                )
+                            }
+                            MenuState.CONFIGURATION -> {
+                                DropdownMenuItem(
+                                    text = { Text("Back") },
+                                    leadingIcon = { Icon(Icons.Rounded.ArrowBackIosNew, null) },
+                                    onClick = { menuState = MenuState.MAIN }
+                                )
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("Change Server") },
+                                    onClick = {
+                                        expanded = false
+                                        onChangeServer()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Change Library") },
+                                    onClick = {
+                                        expanded = false
+                                        onChangeLibrary()
                                     }
                                 )
                             }
