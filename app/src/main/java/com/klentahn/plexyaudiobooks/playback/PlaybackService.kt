@@ -64,7 +64,7 @@ class PlaybackService : MediaLibraryService() {
                 android.app.PendingIntent.getActivity(
                     this,
                     0,
-                    android.content.Intent(this, com.klentahn.plexyaudiobooks.MainActivity::class.java),
+                    Intent(this, com.klentahn.plexyaudiobooks.MainActivity::class.java),
                     android.app.PendingIntent.FLAG_IMMUTABLE
                 )
             )
@@ -201,10 +201,10 @@ class PlaybackService : MediaLibraryService() {
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo
-        ): com.google.common.util.concurrent.ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             val currentMediaItem = exoPlayer.currentMediaItem
             if (currentMediaItem != null) {
-                return com.google.common.util.concurrent.Futures.immediateFuture(
+                return Futures.immediateFuture(
                     MediaSession.MediaItemsWithStartPosition(
                         listOf(currentMediaItem),
                         0,
@@ -214,7 +214,7 @@ class PlaybackService : MediaLibraryService() {
             }
             // If no current item, try to get the last one played or just return an empty future
             // For now, to avoid the crash, we must NOT call super.onPlaybackResumption if it's not implemented
-            return com.google.common.util.concurrent.Futures.immediateFuture(
+            return Futures.immediateFuture(
                 MediaSession.MediaItemsWithStartPosition(
                     emptyList(),
                     0,

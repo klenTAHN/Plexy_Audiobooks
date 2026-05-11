@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.klentahn.plexyaudiobooks.data.MetadataMaster
+import com.klentahn.plexyaudiobooks.ui.components.BookItem
 import com.klentahn.plexyaudiobooks.ui.components.CommonTopBar
 
 @Composable
