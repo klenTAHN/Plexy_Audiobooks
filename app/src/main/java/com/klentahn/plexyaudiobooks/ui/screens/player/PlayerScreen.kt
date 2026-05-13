@@ -1,10 +1,9 @@
 package com.klentahn.plexyaudiobooks.ui.screens.player
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
@@ -15,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.klentahn.plexyaudiobooks.ui.components.CommonTopBar
@@ -32,10 +33,23 @@ import java.util.Locale
 fun PlayerScreen(
     ratingKey: String,
     viewModel: PlayerViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onAuthorClick: (String) -> Unit,
+    onNavigateToLibrary: () -> Unit,
+    onNavigateToAuthors: () -> Unit,
+    onNavigateToAbout: () -> Unit,
+    onChangeServer: () -> Unit,
+    onChangeLibrary: () -> Unit,
+    onSignOut: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    val currentChapter = remember(uiState.chapters, uiState.currentPosition) {
+        uiState.chapters.find { 
+            uiState.currentPosition >= it.startTimeMs && uiState.currentPosition < it.endTimeMs 
+        }
+    }
 
     LaunchedEffect(ratingKey) {
         viewModel.initController(context, ratingKey)
@@ -48,9 +62,10 @@ fun PlayerScreen(
                 subtitle = null,
                 canNavigateBack = true,
                 onNavigateBack = onBack,
-                showChapters = uiState.chapters.isNotEmpty(),
+                showChapters = true,
                 chapters = uiState.chapters,
-                onChapterSelected = { viewModel.seekTo(uiState.chapters[it].startTimeMs) }
+                onChapterSelected = { viewModel.seekTo(uiState.chapters[it].startTimeMs) },
+                showMenuIcon = false
             )
         },
         containerColor = Color.Black
@@ -61,19 +76,18 @@ fun PlayerScreen(
                 .padding(paddingValues)
         ) {
             val screenHeight = maxHeight
-            val isShortScreen = screenHeight < 600.dp
-
+            val screenWidth = maxWidth
+            
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = if (isShortScreen) 12.dp else 24.dp),
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = if (isShortScreen) Arrangement.Top else Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Main Content (Art, Title, Author)
+                // Main Content (Art, Title, Author) - Takes available space
                 Column(
-                    modifier = if (isShortScreen) Modifier.wrapContentHeight() else Modifier.weight(1f),
+                    modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -81,7 +95,7 @@ fun PlayerScreen(
 
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(if (isShortScreen) 0.5f else 1f)
+                            .sizeIn(maxHeight = 400.dp, maxWidth = 400.dp)
                             .aspectRatio(1f)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.DarkGray),
@@ -99,35 +113,52 @@ fun PlayerScreen(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "No Art",
                                 tint = Color.White.copy(alpha = 0.3f),
-                                modifier = Modifier.size(if (isShortScreen) 60.dp else 100.dp)
+                                modifier = Modifier.fillMaxSize(0.5f)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(if (isShortScreen) 12.dp else 32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
                         text = uiState.title,
-                        style = if (isShortScreen) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineSmall,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    
+                    if (currentChapter != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = currentChapter.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.LightGray,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Text(
                         text = uiState.author,
-                        style = if (isShortScreen) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onAuthorClick(uiState.author) }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
 
-                if (isShortScreen) Spacer(modifier = Modifier.height(24.dp))
-
-                // Controls (Slider and Buttons)
+                // Controls (Slider and Buttons) - Fixed size at bottom
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = if (isShortScreen) 16.dp else 32.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Progress Slider
@@ -159,7 +190,7 @@ fun PlayerScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(if (isShortScreen) 16.dp else 32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     // Playback Controls
                     Row(
@@ -171,30 +202,30 @@ fun PlayerScreen(
                         IconButton(
                             onClick = { viewModel.skipBackward() },
                             modifier = Modifier
-                                .size(if (isShortScreen) 48.dp else 56.dp)
+                                .size(56.dp)
                                 .background(Color.White.copy(alpha = 0.1f), androidx.compose.foundation.shape.CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.FastRewind,
                                 contentDescription = "Rewind",
                                 tint = Color.White,
-                                modifier = Modifier.size(if (isShortScreen) 28.dp else 34.dp)
+                                modifier = Modifier.size(34.dp)
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(if (isShortScreen) 32.dp else 48.dp))
+                        Spacer(modifier = Modifier.width(48.dp))
 
                         // Play/Pause
                         Surface(
                             onClick = { viewModel.playPause() },
-                            modifier = Modifier.size(if (isShortScreen) 64.dp else 80.dp),
+                            modifier = Modifier.size(80.dp),
                             shape = androidx.compose.foundation.shape.CircleShape,
                             color = MaterialTheme.colorScheme.primary
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 if (uiState.isLoading) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(if (isShortScreen) 36.dp else 48.dp),
+                                        modifier = Modifier.size(48.dp),
                                         color = Color.Black,
                                         strokeWidth = 3.dp
                                     )
@@ -203,29 +234,31 @@ fun PlayerScreen(
                                         imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                         contentDescription = "Play/Pause",
                                         tint = Color.Black,
-                                        modifier = Modifier.size(if (isShortScreen) 36.dp else 48.dp)
+                                        modifier = Modifier.size(48.dp)
                                     )
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(if (isShortScreen) 32.dp else 48.dp))
+                        Spacer(modifier = Modifier.width(48.dp))
 
                         // Forward
                         IconButton(
                             onClick = { viewModel.skipForward() },
                             modifier = Modifier
-                                .size(if (isShortScreen) 48.dp else 56.dp)
+                                .size(56.dp)
                                 .background(Color.White.copy(alpha = 0.1f), androidx.compose.foundation.shape.CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.FastForward,
                                 contentDescription = "Forward",
                                 tint = Color.White,
-                                modifier = Modifier.size(if (isShortScreen) 28.dp else 34.dp)
+                                modifier = Modifier.size(34.dp)
                             )
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }

@@ -154,8 +154,12 @@ class PlexRepository(
     }
 
     suspend fun getMetadata(serverUri: String, token: String, ratingKey: String): PlexMetadata? {
+        val url = "$serverUri/library/metadata/$ratingKey?includeExternalMedia=1&includeExtras=1&includeChapters=1"
+        return getMetadataByUrl(url, token)
+    }
+
+    suspend fun getMetadataByUrl(url: String, token: String): PlexMetadata? {
         return try {
-            val url = "$serverUri/library/metadata/$ratingKey?includeExternalMedia=1&includeExtras=1"
             val response = plexApi.getMetadata(
                 url = url,
                 token = token,

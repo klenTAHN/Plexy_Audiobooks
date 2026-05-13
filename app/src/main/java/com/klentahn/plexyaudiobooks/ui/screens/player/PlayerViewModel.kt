@@ -200,12 +200,16 @@ class PlayerViewModel(
             targetTrackRatingKey = lastPlayedTrack?.ratingKey
 
             children?.forEach { child ->
-                val mediaItem = processMetadata(child, serverUri, token, targetTrackRatingKey == child.ratingKey)
+                val mediaItem = processMetadata(child, serverUri, token, targetTrackRatingKey == child.ratingKey, initialMetadata)
                 if (mediaItem != null) mediaItems.add(mediaItem)
             }
         } else {
             targetTrackRatingKey = initialMetadata.ratingKey
-            processMetadata(initialMetadata, serverUri, token, true)?.let { mediaItems.add(it) }
+            // If it's a track, try to get parent metadata for the book title
+            val parentMetadata = if (!initialMetadata.parentRatingKey.isNullOrBlank()) {
+                plexRepository.getMetadata(serverUri, token, initialMetadata.parentRatingKey)
+            } else null
+            processMetadata(initialMetadata, serverUri, token, true, parentMetadata)?.let { mediaItems.add(it) }
         }
 
         if (mediaItems.isEmpty()) {
@@ -261,13 +265,37 @@ class PlayerViewModel(
                 _uiState.value = _uiState.value.copy(embeddedArt = null)
             }
             
-            // Fetch full metadata for chapters
-            val fullMetadata = plexRepository.getMetadata(serverUri, token, ratingKey)
-            val chapters = if (fullMetadata?.chapters != null) {
-                fullMetadata.chapters.mapIndexed { index, plexChapter ->
+            // Fetch full metadata for chapters and book title
+            // Use includeChapters=1 specifically for the track
+            val url = "$serverUri/library/metadata/$ratingKey?includeExternalMedia=1&includeExtras=1&includeChapters=1"
+            val response = plexRepository.getMetadataByUrl(url, token)
+            val fullMetadata = response
+            
+            val bookTitle = fullMetadata?.parentTitle 
+                ?: fullMetadata?.grandparentTitle 
+                ?: mediaItem.mediaMetadata.albumTitle?.toString()
+            
+            withContext(Dispatchers.Main) {
+                if (!bookTitle.isNullOrBlank()) {
+                    _uiState.value = _uiState.value.copy(title = bookTitle)
+                }
+            }
+
+            // Chapters can be on the track itself or sometimes on the parent album
+            var plexChapters = fullMetadata?.chapters
+            
+            if (plexChapters == null && fullMetadata?.parentRatingKey != null) {
+                Log.d("PlayerViewModel", "No chapters on track, checking parent album...")
+                val parentUrl = "$serverUri/library/metadata/${fullMetadata.parentRatingKey}?includeChapters=1"
+                val parentMetadata = plexRepository.getMetadataByUrl(parentUrl, token)
+                plexChapters = parentMetadata?.chapters
+            }
+
+            val chapters = if (plexChapters != null) {
+                plexChapters.mapIndexed { index, plexChapter ->
                     val startTime = plexChapter.startTimeOffset ?: 0L
                     val endTime = plexChapter.endTimeOffset 
-                        ?: fullMetadata.chapters.getOrNull(index + 1)?.startTimeOffset 
+                        ?: plexChapters.getOrNull(index + 1)?.startTimeOffset
                         ?: (mediaItem.mediaMetadata.extras?.getLong("duration") ?: 0L)
                     
                     Chapter(
@@ -283,7 +311,7 @@ class PlayerViewModel(
             
             withContext(Dispatchers.Main) {
                 _uiState.value = _uiState.value.copy(chapters = chapters)
-                Log.d("PlayerViewModel", "Updated chapters for $ratingKey: ${chapters.size} found")
+                Log.d("PlayerViewModel", "Updated chapters for $ratingKey: ${chapters.size} found. First chapter: ${chapters.firstOrNull()?.title}")
             }
         }
     }
@@ -292,7 +320,8 @@ class PlayerViewModel(
         item: com.klentahn.plexyaudiobooks.data.model.PlexMetadata,
         serverUri: String,
         token: String,
-        isTarget: Boolean
+        isTarget: Boolean,
+        parentMetadata: com.klentahn.plexyaudiobooks.data.model.PlexMetadata? = null
     ): MediaItem? {
         // Fetch full metadata for the target item to get viewOffset and chapters
         val fullItem = if (isTarget && (item.viewOffset == null && item.chapters == null)) {
@@ -303,16 +332,20 @@ class PlayerViewModel(
         if (mediaPart != null) {
             val streamUrl = "$serverUri${mediaPart.key}${if (mediaPart.key.contains("?")) "&" else "?"}X-Plex-Token=$token"
             
-            val thumbPath = resolveThumbRecursive(serverUri, token, fullItem)
+            // Prefer album thumb if available
+            val thumbPath = parentMetadata?.thumb ?: resolveThumbRecursive(serverUri, token, fullItem)
             val itemThumbUrl = if (thumbPath != null) {
                 val encodedThumb = java.net.URLEncoder.encode(thumbPath, "UTF-8")
                 "$serverUri/photo/:/transcode?url=$encodedThumb&width=600&height=600&X-Plex-Token=$token"
             } else null
 
+            val bookTitle = parentMetadata?.title ?: fullItem.parentTitle ?: fullItem.title
+
             val author = fullItem.grandparentTitle.takeIf { !it.isNullOrBlank() && it != "Various Artists" && it != "Unknown Artist" } 
                 ?: fullItem.parentTitle.takeIf { !it.isNullOrBlank() && it != "Various Artists" && it != "Unknown Artist" } 
                 ?: fullItem.grandparentTitle.takeIf { !it.isNullOrBlank() }
                 ?: fullItem.parentTitle.takeIf { !it.isNullOrBlank() }
+                ?: parentMetadata?.parentTitle ?: parentMetadata?.grandparentTitle
                 ?: ""
 
             return MediaItem.Builder()
@@ -320,7 +353,8 @@ class PlayerViewModel(
                 .setUri(streamUrl)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
-                        .setTitle(fullItem.title)
+                        .setTitle(fullItem.title) // This is the track title
+                        .setAlbumTitle(bookTitle) // This is the book title
                         .setArtist(author)
                         .setArtworkUri(itemThumbUrl?.let { android.net.Uri.parse(it) })
                         .setExtras(Bundle().apply { 
@@ -337,7 +371,7 @@ class PlayerViewModel(
     private fun updateMetadata(mediaItem: MediaItem?) {
         mediaItem?.let {
             _uiState.value = _uiState.value.copy(
-                title = it.mediaMetadata.title?.toString() ?: _uiState.value.title,
+                title = it.mediaMetadata.albumTitle?.toString() ?: it.mediaMetadata.title?.toString() ?: _uiState.value.title,
                 author = it.mediaMetadata.artist?.toString() ?: _uiState.value.author,
                 thumbUrl = it.mediaMetadata.artworkUri?.toString() ?: _uiState.value.thumbUrl
             )
@@ -347,12 +381,40 @@ class PlayerViewModel(
     private fun startProgressUpdate() {
         progressJob?.cancel()
         progressJob = viewModelScope.launch {
+            var lastTimelineUpdate = 0L
             while (true) {
-                controller?.let {
+                controller?.let { c ->
                     _uiState.value = _uiState.value.copy(
-                        currentPosition = it.currentPosition,
-                        duration = it.duration
+                        currentPosition = c.currentPosition,
+                        duration = c.duration
                     )
+
+                    // Sync with Plex every 10 seconds
+                    val currentTime = System.currentTimeMillis()
+                    if (c.isPlaying && currentTime - lastTimelineUpdate > 10000) {
+                        val mediaItem = c.currentMediaItem
+                        val key = mediaItem?.mediaMetadata?.extras?.getString("key")
+                        if (mediaItem != null && key != null) {
+                            val serverUri = settingsManager.serverUri.first()?.removeSuffix("/")
+                            val token = settingsManager.authToken.first()
+                            if (serverUri != null && token != null) {
+                                val currentPos = c.currentPosition
+                                val totalDuration = c.duration
+                                viewModelScope.launch(Dispatchers.IO) {
+                                    plexRepository.updateTimeline(
+                                        serverUri = serverUri,
+                                        token = token,
+                                        ratingKey = mediaItem.mediaId,
+                                        key = key,
+                                        state = "playing",
+                                        time = currentPos,
+                                        duration = totalDuration
+                                    )
+                                }
+                            }
+                        }
+                        lastTimelineUpdate = currentTime
+                    }
                 }
                 delay(1000)
             }

@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.klentahn.plexyaudiobooks.ui.navigation.Screen
+import com.klentahn.plexyaudiobooks.ui.screens.AboutScreen
 import com.klentahn.plexyaudiobooks.ui.screens.auth.AuthScreen
 import com.klentahn.plexyaudiobooks.ui.screens.auth.AuthViewModel
 import com.klentahn.plexyaudiobooks.ui.screens.auth.LibrarySelectScreen
@@ -137,6 +138,9 @@ fun PlexyAudiobooksApp(
                 onNavigateToAuthors = {
                     navController.navigate(Screen.Authors.route)
                 },
+                onNavigateToAbout = {
+                    navController.navigate(Screen.About.route)
+                },
                 onChangeServer = {
                     navController.navigate(Screen.ServerSelect.route) {
                         popUpTo(Screen.MainLibrary.route) { inclusive = true }
@@ -166,6 +170,9 @@ fun PlexyAudiobooksApp(
                     navController.navigate(Screen.MainLibrary.route) {
                         popUpTo(Screen.MainLibrary.route) { inclusive = true }
                     }
+                },
+                onNavigateToAbout = {
+                    navController.navigate(Screen.About.route)
                 },
                 onChangeServer = {
                     navController.navigate(Screen.ServerSelect.route) {
@@ -221,7 +228,42 @@ fun PlexyAudiobooksApp(
             PlayerScreen(
                 ratingKey = ratingKey,
                 viewModel = playerViewModel,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onAuthorClick = { author ->
+                    navController.navigate(Screen.AuthorBooks.createRoute(author))
+                },
+                onNavigateToLibrary = {
+                    navController.navigate(Screen.MainLibrary.route) {
+                        popUpTo(Screen.MainLibrary.route) { inclusive = true }
+                    }
+                },
+                onNavigateToAuthors = {
+                    navController.navigate(Screen.Authors.route)
+                },
+                onNavigateToAbout = {
+                    navController.navigate(Screen.About.route)
+                },
+                onChangeServer = {
+                    navController.navigate(Screen.ServerSelect.route) {
+                        popUpTo(Screen.MainLibrary.route) { inclusive = true }
+                    }
+                },
+                onChangeLibrary = {
+                    navController.navigate(Screen.LibrarySelect.route) {
+                        popUpTo(Screen.MainLibrary.route) { inclusive = true }
+                    }
+                },
+                onSignOut = {
+                    navController.navigate(Screen.Auth.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.About.route) {
+            AboutScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

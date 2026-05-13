@@ -6,6 +6,7 @@ sealed class Screen(val route: String) {
     object LibrarySelect : Screen("library_select")
     object MainLibrary : Screen("main_library")
     object Authors : Screen("authors")
+    object About : Screen("about")
 
     object AuthorBooks : Screen("author_books/{author}") {
         fun createRoute(author: String): String = "author_books/$author"

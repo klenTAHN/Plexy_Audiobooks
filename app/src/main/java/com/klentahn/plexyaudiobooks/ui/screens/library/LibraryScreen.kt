@@ -57,6 +57,7 @@ fun LibraryScreen(
     onBookClick: (String) -> Unit,
     onAuthorClick: (String) -> Unit,
     onNavigateToAuthors: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     onChangeServer: () -> Unit,
     onChangeLibrary: () -> Unit,
     onSignOut: () -> Unit,
@@ -73,11 +74,16 @@ fun LibraryScreen(
     Scaffold(
         topBar = {
             CommonTopBar(
-                title = "Plexy",
+                title = "Plexy Audiobooks",
                 subtitle = "Library",
                 onChangeServer = onChangeServer,
                 onChangeLibrary = onChangeLibrary,
-                onSignOut = { viewModel.signOut(onSignOut) }
+                onSignOut = { viewModel.signOut(onSignOut) },
+                onNavigateToLibrary = null,
+                onNavigateToAuthors = onNavigateToAuthors,
+                onNavigateToAbout = onNavigateToAbout,
+                onRefreshLibrary = { viewModel.refreshLibrary() },
+                onRefreshMetadata = { viewModel.refreshMetadata() }
             )
         },
         containerColor = Color.Black
