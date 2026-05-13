@@ -17,5 +17,5 @@ data class BookEntity(
     val addedAt: Long?,
     val updatedAt: Long?,
     val libraryKey: String,
-    val streamUrl: String? = null
+    val mediaKey: String? = null
 )

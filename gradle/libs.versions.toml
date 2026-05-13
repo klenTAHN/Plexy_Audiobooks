@@ -37,8 +37,14 @@ datastorePreferences = "1.1.7"
 material = "1.4.0"
 media3 = "1.5.1"
 androidx-browser = "1.8.0"
+securityCrypto = "1.1.0"
+sqlcipher = "4.5.4"
+sqliteKtx = "2.4.0"
 
 [libraries]
+sqlcipher = { group = "net.zetetic", name = "android-database-sqlcipher", version.ref = "sqlcipher" }
+androidx-sqlite-ktx = { group = "androidx.sqlite", name = "sqlite-ktx", version.ref = "sqliteKtx" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "androidx-browser" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -91,4 +97,3 @@ androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.re
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "googleDevtoolsKsp" }
-

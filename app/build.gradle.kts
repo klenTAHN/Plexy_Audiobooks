@@ -37,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -72,6 +73,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.moshi.kotlin)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.sqlcipher)
+    implementation(libs.androidx.sqlite.ktx)
     implementation(libs.material)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)

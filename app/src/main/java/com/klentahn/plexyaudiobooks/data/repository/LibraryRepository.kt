@@ -170,9 +170,9 @@ class LibraryRepository(
                     val resolvedThumb = resolveThumbRecursive(metadata, serverUri, token, clientIdentifier) ?: existingBook?.thumb
                     
                     val mediaPart = metadata.media?.firstOrNull()?.parts?.firstOrNull()
-                    val streamUrl = mediaPart?.let { "$serverUri${it.key}?X-Plex-Token=$token" }
+                    val mediaKey = mediaPart?.key
 
-                    Log.d(TAG, "Library item: title='${metadata.title}', type='${metadata.type}', resolvedThumb='$resolvedThumb', streamUrl='$streamUrl'")
+                    Log.d(TAG, "Library item: title='${metadata.title}', type='${metadata.type}', resolvedThumb='$resolvedThumb', mediaKey='$mediaKey'")
                     if (resolvedThumb == null) {
                         Log.w(TAG, "  -> No thumb found for '${metadata.title}'.")
                     }
@@ -195,7 +195,7 @@ class LibraryRepository(
                         addedAt = metadata.addedAt ?: existingBook?.addedAt,
                         updatedAt = metadata.updatedAt ?: existingBook?.updatedAt,
                         libraryKey = libraryKey,
-                        streamUrl = streamUrl ?: existingBook?.streamUrl
+                        mediaKey = mediaKey ?: existingBook?.mediaKey
                     )
                 }
                 
@@ -251,9 +251,9 @@ class LibraryRepository(
                         val resolvedThumb = resolveThumbRecursive(metadata, serverUri, token, clientIdentifier)
                         
                         val mediaPart = metadata.media?.firstOrNull()?.parts?.firstOrNull()
-                        val streamUrl = mediaPart?.let { "$serverUri${it.key}?X-Plex-Token=$token" }
+                        val mediaKey = mediaPart?.key
 
-                        Log.d(TAG, "Metadata update for '${metadata.title}': resolvedThumb='$resolvedThumb', streamUrl='$streamUrl'")
+                        Log.d(TAG, "Metadata update for '${metadata.title}': resolvedThumb='$resolvedThumb', mediaKey='$mediaKey'")
                         if (resolvedThumb == null) {
                             Log.w(TAG, "  -> Still no thumb after metadata refresh and recursive fallback for '${metadata.title}'")
                         }
@@ -272,7 +272,7 @@ class LibraryRepository(
                             duration = metadata.duration ?: book.duration,
                             year = metadata.year ?: book.year,
                             updatedAt = metadata.updatedAt ?: book.updatedAt,
-                            streamUrl = streamUrl ?: book.streamUrl
+                            mediaKey = mediaKey ?: book.mediaKey
                         )
                         bookDao.insertBooks(listOf(updatedBook))
                     }
