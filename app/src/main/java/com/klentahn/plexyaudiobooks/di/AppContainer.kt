@@ -38,8 +38,10 @@ class AppContainer(private val context: Context) {
     }
 
     private val certificatePinner = CertificatePinner.Builder()
-        .add("plex.tv", "sha256/k2v657WOf7M8iIdARgz9yYj0NfM/t5xP6MvVd68Y0p0=") // Placeholder: replace with actual pins
-        .add("*.plex.tv", "sha256/k2v657WOf7M8iIdARgz9yYj0NfM/t5xP6MvVd68Y0p0=")
+        .add("plex.tv", "sha256/6CCUUJvSFdZ8Qdc6SP0qS+vMePDxuvroCL7cO9AR5d8=")
+        .add("plex.tv", "sha256/Wec45nQiFwKvHtuHxSAMGkt19k+uPSw9JlEkxhvYPHk=")
+        .add("*.plex.tv", "sha256/6CCUUJvSFdZ8Qdc6SP0qS+vMePDxuvroCL7cO9AR5d8=")
+        .add("*.plex.tv", "sha256/Wec45nQiFwKvHtuHxSAMGkt19k+uPSw9JlEkxhvYPHk=")
         .build()
 
     private val okHttpClient = OkHttpClient.Builder()

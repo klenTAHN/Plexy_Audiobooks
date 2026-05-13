@@ -29,7 +29,6 @@ interface PlexApi {
     @Headers("Accept: application/json")
     suspend fun checkPin(
         @Path("id") id: Long,
-        @Query("code") code: String,
         @Header("X-Plex-Client-Identifier") clientIdentifier: String,
         @Header("X-Plex-Product") product: String,
         @Header("X-Plex-Device") device: String,

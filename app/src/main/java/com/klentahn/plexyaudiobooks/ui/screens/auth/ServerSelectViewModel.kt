@@ -37,8 +37,10 @@ class ServerSelectViewModel(
         viewModelScope.launch {
             _uiState.value = ServerSelectUiState.Loading
             val token = settingsManager.authToken.first()
+            android.util.Log.d("ServerSelectVM", "loadServers: token found? ${token != null}")
             if (token != null) {
                 val servers = plexRepository.getServers(token)
+                android.util.Log.d("ServerSelectVM", "loadServers: servers found? ${servers?.size ?: 0}")
                 if (servers != null) {
                     _uiState.value = ServerSelectUiState.Success(servers)
                 } else {

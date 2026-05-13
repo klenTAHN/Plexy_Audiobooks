@@ -55,11 +55,10 @@ class PlexRepository(
         }
     }
 
-    suspend fun checkPin(id: Long, code: String): PlexPinResponse? {
+    suspend fun checkPin(id: Long): PlexPinResponse? {
         return try {
             val response = plexApi.checkPin(
                 id = id,
-                code = code,
                 clientIdentifier = getClientIdentifier(),
                 product = productName,
                 device = deviceName,
@@ -72,7 +71,7 @@ class PlexRepository(
                 null
             }
         } catch (e: Exception) {
-            android.util.Log.e("PlexRepository", "checkPin exception", e)
+            android.util.Log.e("PlexRepository", "checkPin exception: ${e.message}", e)
             null
         }
     }

@@ -8,6 +8,7 @@ class PlexyAudiobooksApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        System.loadLibrary("sqlcipher")
         container = AppContainer(this)
     }
 }

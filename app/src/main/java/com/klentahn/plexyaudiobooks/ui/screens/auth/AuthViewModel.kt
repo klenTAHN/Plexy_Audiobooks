@@ -25,13 +25,6 @@ sealed interface AuthUiState {
     data class Error(val message: String) : AuthUiState
 }
 
-sealed interface ManualTokenState {
-    object Idle : ManualTokenState
-    object Loading : ManualTokenState
-    object Success : ManualTokenState
-    data class Error(val message: String) : ManualTokenState
-}
-
 class AuthViewModel(
     private val plexRepository: PlexRepository,
     private val settingsManager: SettingsManager
@@ -39,9 +32,6 @@ class AuthViewModel(
 
     private val _pinState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val pinState: StateFlow<AuthUiState> = _pinState.asStateFlow()
-
-    private val _manualState = MutableStateFlow<ManualTokenState>(ManualTokenState.Idle)
-    val manualState: StateFlow<ManualTokenState> = _manualState.asStateFlow()
 
     private var pollingJob: Job? = null
 
@@ -68,57 +58,53 @@ class AuthViewModel(
     }
 
     private fun buildAuthUrl(pin: PlexPinResponse): String {
-        val clientId = plexRepository.getClientIdentifierBlocking()
-        val product = URLEncoder.encode(plexRepository.productName, "UTF-8")
-        val device = URLEncoder.encode(android.os.Build.MODEL, "UTF-8")
-        val encodedClientId = URLEncoder.encode(clientId, "UTF-8")
-        val encodedCode = URLEncoder.encode(pin.code, "UTF-8")
-        val forwardUrl = URLEncoder.encode("plexy://auth", "UTF-8")
-
-        // Plex V2 Auth URL with identification in both fragment and query parameters
-        // to maximize compatibility with the web app and sub-requests.
-        return "https://app.plex.tv/auth#?" +
-                "clientID=$encodedClientId" +
-                "&code=$encodedCode" +
-                "&X-Plex-Client-Identifier=$encodedClientId" +
-                "&X-Plex-Product=$product" +
-                "&X-Plex-Device=$device" +
-                "&X-Plex-Platform=Android" +
-                "&context%5Bdevice%5D%5Bproduct%5D=$product" +
-                "&context%5Bdevice%5D%5Bplatform%5D=Android" +
-                "&context%5Bdevice%5D%5Bdevice%5D=$device" +
-                "&forwardUrl=$forwardUrl"
+        // The original method directing users to plex.tv/link to enter the code manually
+        return "https://plex.tv/link"
     }
 
     private fun startPolling(pin: PlexPinResponse) {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
-            repeat(90) {  // 3 minutes
+            // Poll for 15 minutes (max PIN life)
+            val maxAttempts = (15 * 60) / 2 // every 2 seconds
+            repeat(maxAttempts) {
+                delay(2000)   // Check every 2 seconds
                 checkPinStatus()
                 if (_pinState.value is AuthUiState.Success) return@launch
-                delay(1500)   // Check every 1.5 seconds
             }
+            _pinState.value = AuthUiState.Error("PIN expired. Please try again.")
         }
     }
 
-    fun checkPinStatus() {
+    fun checkPinStatus(isManual: Boolean = false) {
         val current = _pinState.value
-        if (current !is AuthUiState.PinGenerated) return
+        if (current !is AuthUiState.PinGenerated) {
+            android.util.Log.d("AuthViewModel", "checkPinStatus: Not in PinGenerated state. Current: ${current::class.simpleName}")
+            return
+        }
 
         viewModelScope.launch {
             try {
-                val checked = plexRepository.checkPin(current.pin.id, current.pin.code)
+                if (isManual) _pinState.value = AuthUiState.Loading // Show loading for manual check
+                
+                android.util.Log.d("AuthViewModel", "checkPinStatus: Checking for ID=${current.pin.id} (Manual: $isManual)")
+                val checked = plexRepository.checkPin(current.pin.id)
+                android.util.Log.d("AuthViewModel", "checkPinStatus: Result - authToken=${checked?.authToken?.take(5)}...")
+                
                 if (checked?.authToken != null) {
                     settingsManager.saveAuthToken(checked.authToken)
                     _pinState.value = AuthUiState.Success
                     pollingJob?.cancel()
+                } else if (isManual) {
+                    // If manual and no token, go back to PinGenerated so they can try again
+                    _pinState.value = current
                 }
             } catch (e: Exception) {
-                val msg = when (e) {
-                    is java.net.UnknownHostException -> "No internet connection to Plex. Please check Wi-Fi / Mobile data."
-                    else -> "Connection error: ${e.message}"
+                // Log the error
+                android.util.Log.w("AuthViewModel", "checkPinStatus: Error: ${e.message}")
+                if (isManual) {
+                    _pinState.value = AuthUiState.Error("Connection failed: ${e.message}. Please check internet and try again.")
                 }
-                _pinState.value = AuthUiState.Error(msg)
             }
         }
     }

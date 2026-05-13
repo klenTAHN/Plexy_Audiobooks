@@ -38,11 +38,11 @@ material = "1.4.0"
 media3 = "1.5.1"
 androidx-browser = "1.8.0"
 securityCrypto = "1.1.0"
-sqlcipher = "4.5.4"
+sqlcipher = "4.16.0"
 sqliteKtx = "2.4.0"
 
 [libraries]
-sqlcipher = { group = "net.zetetic", name = "android-database-sqlcipher", version.ref = "sqlcipher" }
+sqlcipher = { group = "net.zetetic", name = "sqlcipher-android", version.ref = "sqlcipher" }
 androidx-sqlite-ktx = { group = "androidx.sqlite", name = "sqlite-ktx", version.ref = "sqliteKtx" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "androidx-browser" }

@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity() {
             val token = settingsManager.authToken.first()
             val serverUri = settingsManager.serverUri.first()
             val libraryKey = settingsManager.libraryKey.first()
+            
+            android.util.Log.d("MainActivity", "Start destination check: token=${token?.take(5)}..., server=$serverUri, lib=$libraryKey")
 
             when {
                 token == null -> Screen.Auth.route
@@ -96,7 +98,7 @@ fun PlexyAudiobooksApp(
 
             AuthScreen(
                 onSuccess = {
-                    navController.navigate(Screen.LibrarySelect.route) {
+                    navController.navigate(Screen.ServerSelect.route) {
                         popUpTo(Screen.Auth.route) { inclusive = true }
                     }
                 }
