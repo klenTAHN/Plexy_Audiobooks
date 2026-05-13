@@ -58,7 +58,7 @@ class ServerSelectViewModel(
             // Find the best connection (prefer local or non-relay if possible)
             val connection = allConnections.find { !it.relay } ?: allConnections.firstOrNull()
             if (connection != null) {
-                settingsManager.saveServer(device.clientIdentifier, connection.uri)
+                settingsManager.saveServer(connection.uri)
                 onSelected()
             }
         }

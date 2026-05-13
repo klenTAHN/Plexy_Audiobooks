@@ -73,7 +73,7 @@ class LibrarySelectViewModel(
                 }
             }
             
-            settingsManager.saveLibrary(library.key, library.title)
+            settingsManager.saveLibrary(library.key)
             onResult(isTrackProgressEnabled)
         }
     }

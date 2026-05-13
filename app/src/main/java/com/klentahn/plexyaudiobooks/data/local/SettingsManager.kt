@@ -3,7 +3,6 @@ package com.klentahn.plexyaudiobooks.data.local
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -18,7 +17,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class SettingsManager(private val context: Context) {
 
-    private val masterKey = MasterKey.Builder(context)
+    private val masterKey = MasterKey.Builder(context, MasterKey.DEFAULT_MASTER_KEY_ALIAS)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
@@ -36,46 +35,29 @@ class SettingsManager(private val context: Context) {
     companion object {
         private const val PLEX_AUTH_TOKEN_KEY = "plex_auth_token"
         private const val DB_PASSPHRASE_KEY = "db_passphrase"
-        private val PLEX_SERVER_ID = stringPreferencesKey("plex_server_id")
         private val PLEX_SERVER_URI = stringPreferencesKey("plex_server_uri")
         private val PLEX_LIBRARY_KEY = stringPreferencesKey("plex_library_key")
-        private val PLEX_LIBRARY_TITLE = stringPreferencesKey("plex_library_title")
         private val PLEX_CLIENT_IDENTIFIER = stringPreferencesKey("client_identifier")
-        private val IS_MANUAL_TOKEN = booleanPreferencesKey("is_manual_token")
     }
 
-    val serverId: Flow<String?> = context.dataStore.data.map { it[PLEX_SERVER_ID] }
     val serverUri: Flow<String?> = context.dataStore.data.map { it[PLEX_SERVER_URI] }
     val libraryKey: Flow<String?> = context.dataStore.data.map { it[PLEX_LIBRARY_KEY] }
-    val libraryTitle: Flow<String?> = context.dataStore.data.map { it[PLEX_LIBRARY_TITLE] }
     val clientIdentifier: Flow<String?> = context.dataStore.data.map { it[PLEX_CLIENT_IDENTIFIER] }
-    val isManualToken: Flow<Boolean> = context.dataStore.data.map { it[IS_MANUAL_TOKEN] ?: false }
 
-    suspend fun saveAuthToken(token: String, isManual: Boolean = false) {
+    fun saveAuthToken(token: String) {
         sharedPreferences.edit().putString(PLEX_AUTH_TOKEN_KEY, token).apply()
         _authToken.value = token
-        context.dataStore.edit { it[IS_MANUAL_TOKEN] = isManual }
     }
 
-    suspend fun saveServerUri(uri: String) {
-        context.dataStore.edit { it[PLEX_SERVER_URI] = uri }
-    }
-
-    suspend fun saveServer(id: String, uri: String) {
+    suspend fun saveServer(uri: String) {
         context.dataStore.edit { prefs ->
-            prefs[PLEX_SERVER_ID] = id
             prefs[PLEX_SERVER_URI] = uri
         }
     }
 
-    suspend fun saveLibraryKey(key: String) {
-        context.dataStore.edit { it[PLEX_LIBRARY_KEY] = key }
-    }
-
-    suspend fun saveLibrary(key: String, title: String) {
+    suspend fun saveLibrary(key: String) {
         context.dataStore.edit { prefs ->
             prefs[PLEX_LIBRARY_KEY] = key
-            prefs[PLEX_LIBRARY_TITLE] = title
         }
     }
 
@@ -86,17 +68,12 @@ class SettingsManager(private val context: Context) {
     suspend fun clearAuth() {
         sharedPreferences.edit().remove(PLEX_AUTH_TOKEN_KEY).apply()
         _authToken.value = null
-        context.dataStore.edit { it.remove(IS_MANUAL_TOKEN) }
     }
 
     suspend fun clear() {
         context.dataStore.edit { it.clear() }
         sharedPreferences.edit().clear().apply()
         _authToken.value = null
-    }
-
-    suspend fun clearAll() {
-        clear()
     }
 
     fun getDatabasePassphrase(): ByteArray {
