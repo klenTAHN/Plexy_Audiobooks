@@ -1,5 +1,9 @@
 package com.klentahn.plexyaudiobooks.ui.screens.library
 
+import android.app.UiModeManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +74,14 @@ fun LibraryScreen(
     val viewMode by viewModel.viewMode.collectAsState()
     val context = LocalContext.current
     val metadataMaster = remember { MetadataMaster(context) }
+    
+    val isAutomotive = remember {
+        val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+        context.packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE) ||
+                uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_CAR
+    }
+    val gridColumns = if (isAutomotive) 4 else 2
+    val gridSpacing = if (isAutomotive) 4.dp else 16.dp
 
     Scaffold(
         topBar = {
@@ -119,11 +131,11 @@ fun LibraryScreen(
                     }
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                        columns = GridCells.Fixed(gridColumns),
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        contentPadding = PaddingValues(gridSpacing),
+                        horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+                        verticalArrangement = Arrangement.spacedBy(gridSpacing)
                     ) {
                         items(books, key = { it.ratingKey }) { book ->
                             BookTile(
@@ -131,6 +143,7 @@ fun LibraryScreen(
                                 serverUri = serverUri,
                                 token = token,
                                 metadataMaster = metadataMaster,
+                                isSmall = isAutomotive,
                                 onClick = { onBookClick(book.ratingKey) }
                             )
                         }
@@ -147,12 +160,14 @@ fun BookTile(
     serverUri: String?,
     token: String?,
     metadataMaster: MetadataMaster,
+    isSmall: Boolean = false,
     onClick: () -> Unit
 ) {
     var imageModel by remember(book.ratingKey, book.thumb) {
+        val width = if (isSmall) 300 else 400
         val url = if (serverUri != null && token != null && book.thumb != null) {
             val encodedThumb = URLEncoder.encode(book.thumb, "UTF-8")
-            "$serverUri/photo/:/transcode?url=$encodedThumb&width=400&height=400&X-Plex-Token=$token"
+            "$serverUri/photo/:/transcode?url=$encodedThumb&width=$width&height=$width&X-Plex-Token=$token"
         } else null
         mutableStateOf<Any?>(url)
     }
@@ -178,7 +193,7 @@ fun BookTile(
         Card(
             modifier = Modifier.aspectRatio(1f),
             shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = if (isSmall) 2.dp else 4.dp)
         ) {
             AsyncImage(
                 model = imageModel,
@@ -187,10 +202,10 @@ fun BookTile(
                 contentScale = ContentScale.Crop
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(if (isSmall) 2.dp else 8.dp))
         Text(
             text = book.title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = if (isSmall) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -199,7 +214,7 @@ fun BookTile(
         )
         Text(
             text = book.author,
-            style = MaterialTheme.typography.bodySmall,
+            style = if (isSmall) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

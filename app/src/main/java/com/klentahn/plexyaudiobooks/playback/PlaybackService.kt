@@ -13,13 +13,18 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.klentahn.plexyaudiobooks.PlexyAudiobooksApplication
+import androidx.core.net.toUri
 import com.klentahn.plexyaudiobooks.data.repository.PlexRepository
+import com.klentahn.plexyaudiobooks.data.repository.LibraryRepository
 import com.klentahn.plexyaudiobooks.data.local.SettingsManager
+import com.klentahn.plexyaudiobooks.data.local.db.BookEntity
+import com.klentahn.plexyaudiobooks.data.model.PlexMetadata
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService.LibraryParams
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,6 +41,7 @@ class PlaybackService : MediaLibraryService() {
     private var progressSyncJob: Job? = null
 
     private lateinit var plexRepository: PlexRepository
+    private lateinit var libraryRepository: LibraryRepository
     private lateinit var settingsManager: SettingsManager
 
     @OptIn(UnstableApi::class)
@@ -44,6 +50,7 @@ class PlaybackService : MediaLibraryService() {
 
         val appContainer = (application as PlexyAudiobooksApplication).container
         plexRepository = appContainer.plexRepository
+        libraryRepository = appContainer.libraryRepository
         settingsManager = appContainer.settingsManager
 
         val attributionContext = createAttributionContext("media_playback")
@@ -141,6 +148,72 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
+    private suspend fun resolveMediaItem(ratingKey: String): List<MediaItem> {
+        val serverUri = settingsManager.serverUri.first()?.removeSuffix("/") ?: return emptyList()
+        val token = settingsManager.authToken.first() ?: return emptyList()
+
+        val initialMetadata = plexRepository.getMetadata(serverUri, token, ratingKey) ?: return emptyList()
+
+        val mediaItems = mutableListOf<MediaItem>()
+        if (initialMetadata.type == "album") {
+            val children = plexRepository.getChildren(serverUri, token, ratingKey)
+            children?.forEach { child ->
+                val mediaItem = processMetadata(child, serverUri, token, initialMetadata)
+                if (mediaItem != null) mediaItems.add(mediaItem)
+            }
+        } else {
+            val parentMetadata = if (!initialMetadata.parentRatingKey.isNullOrBlank()) {
+                plexRepository.getMetadata(serverUri, token, initialMetadata.parentRatingKey)
+            } else null
+            processMetadata(initialMetadata, serverUri, token, parentMetadata)?.let { mediaItems.add(it) }
+        }
+        return mediaItems
+    }
+
+    private fun processMetadata(
+        item: PlexMetadata,
+        serverUri: String,
+        token: String,
+        parentMetadata: PlexMetadata? = null
+    ): MediaItem? {
+        val mediaPart = item.media?.firstOrNull()?.parts?.firstOrNull()
+        if (mediaPart != null) {
+            val streamUrl = "$serverUri${mediaPart.key}${if (mediaPart.key.contains("?")) "&" else "?"}X-Plex-Token=$token"
+            
+            val thumbPath = item.thumb ?: parentMetadata?.thumb
+            val itemThumbUrl = if (thumbPath != null) {
+                val encodedThumb = java.net.URLEncoder.encode(thumbPath, "UTF-8")
+                "$serverUri/photo/:/transcode?url=$encodedThumb&width=600&height=600&X-Plex-Token=$token"
+            } else null
+
+            val bookTitle = parentMetadata?.title ?: item.parentTitle ?: item.title
+            val author = item.grandparentTitle.takeIf { !it.isNullOrBlank() && it != "Various Artists" && it != "Unknown Artist" }
+                ?: item.parentTitle.takeIf { !it.isNullOrBlank() && it != "Various Artists" && it != "Unknown Artist" }
+                ?: item.grandparentTitle.takeIf { !it.isNullOrBlank() }
+                ?: item.parentTitle.takeIf { !it.isNullOrBlank() }
+                ?: parentMetadata?.parentTitle ?: parentMetadata?.grandparentTitle
+                ?: ""
+
+            return MediaItem.Builder()
+                .setMediaId(item.ratingKey)
+                .setUri(streamUrl)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(item.title)
+                        .setAlbumTitle(bookTitle)
+                        .setArtist(author)
+                        .setArtworkUri(itemThumbUrl?.toUri())
+                        .setExtras(Bundle().apply { 
+                            putString("key", item.key) 
+                            putLong("viewOffset", item.viewOffset ?: 0L)
+                        })
+                        .build()
+                )
+                .build()
+        }
+        return null
+    }
+
     override fun onDestroy() {
         stopProgressSync()
         mediaSession?.run {
@@ -163,7 +236,7 @@ class PlaybackService : MediaLibraryService() {
                     MediaMetadata.Builder()
                         .setIsBrowsable(true)
                         .setIsPlayable(false)
-                        .setTitle("Plexy Root")
+                        .setTitle("Plexy Audiobooks")
                         .build()
                 )
                 .build()
@@ -178,7 +251,118 @@ class PlaybackService : MediaLibraryService() {
             pageSize: Int,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
-            return Futures.immediateFuture(LibraryResult.ofItemList(ImmutableList.of(), params))
+            val future = SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
+            serviceScope.launch {
+                val items = mutableListOf<MediaItem>()
+                when (parentId) {
+                    "ROOT" -> {
+                        items.add(
+                            MediaItem.Builder()
+                                .setMediaId("ALL_BOOKS")
+                                .setMediaMetadata(
+                                    MediaMetadata.Builder()
+                                        .setTitle("All Books")
+                                        .setIsBrowsable(true)
+                                        .setIsPlayable(false)
+                                        .build()
+                                )
+                                .build()
+                        )
+                        items.add(
+                            MediaItem.Builder()
+                                .setMediaId("AUTHORS")
+                                .setMediaMetadata(
+                                    MediaMetadata.Builder()
+                                        .setTitle("Authors")
+                                        .setIsBrowsable(true)
+                                        .setIsPlayable(false)
+                                        .build()
+                                )
+                                .build()
+                        )
+                    }
+                    "ALL_BOOKS" -> {
+                        val books = libraryRepository.getBooksByTitle("").first()
+                        books.forEach { book ->
+                            items.add(
+                                MediaItem.Builder()
+                                    .setMediaId(book.ratingKey)
+                                    .setMediaMetadata(
+                                        MediaMetadata.Builder()
+                                            .setTitle(book.title)
+                                            .setArtist(book.author)
+                                            .setIsBrowsable(false)
+                                            .setIsPlayable(true)
+                                            .setArtworkUri(book.thumb?.toUri())
+                                            .build()
+                                    )
+                                    .build()
+                            )
+                        }
+                    }
+                    "AUTHORS" -> {
+                        val authors = libraryRepository.getAuthors("").first()
+                        authors.forEach { author ->
+                            items.add(
+                                MediaItem.Builder()
+                                    .setMediaId("AUTHOR|$author")
+                                    .setMediaMetadata(
+                                        MediaMetadata.Builder()
+                                            .setTitle(author)
+                                            .setIsBrowsable(true)
+                                            .setIsPlayable(false)
+                                            .build()
+                                    )
+                                    .build()
+                            )
+                        }
+                    }
+                    else -> {
+                        if (parentId.startsWith("AUTHOR|")) {
+                            val author = parentId.substringAfter("AUTHOR|")
+                            val books = libraryRepository.getBooksByAuthor(author).first()
+                            books.forEach { book ->
+                                items.add(
+                                    MediaItem.Builder()
+                                        .setMediaId(book.ratingKey)
+                                        .setMediaMetadata(
+                                            MediaMetadata.Builder()
+                                                .setTitle(book.title)
+                                                .setArtist(book.author)
+                                                .setIsBrowsable(false)
+                                                .setIsPlayable(true)
+                                                .setArtworkUri(book.thumb?.toUri())
+                                                .build()
+                                        )
+                                        .build()
+                                )
+                            }
+                        }
+                    }
+                }
+                future.set(LibraryResult.ofItemList(ImmutableList.copyOf(items), params))
+            }
+            return future
+        }
+
+        override fun onAddMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>
+        ): ListenableFuture<MutableList<MediaItem>> {
+            val future = SettableFuture.create<MutableList<MediaItem>>()
+            serviceScope.launch {
+                val resolvedItems = mutableListOf<MediaItem>()
+                for (item in mediaItems) {
+                    if (item.localConfiguration?.uri != null) {
+                        resolvedItems.add(item)
+                    } else {
+                        resolvedItems.addAll(resolveMediaItem(item.mediaId))
+                    }
+                }
+                future.set(resolvedItems)
+            }
+            return future
         }
 
         @OptIn(UnstableApi::class)
